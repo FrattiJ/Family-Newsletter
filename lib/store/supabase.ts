@@ -16,10 +16,23 @@ type ArticleRow = {
 };
 
 function client() {
+  // It is easy to paste the dashboard address from the browser bar instead of
+  // the project's API address. That fails deep inside the client with an
+  // unreadable "unexpected <!DOCTYPE" error, so catch it here and say so.
+  const url = env.supabaseUrl;
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)\/?$/.test(url)) {
+    throw new Error(
+      `SUPABASE_URL does not look like a Supabase API address: "${url}". ` +
+        `It should be the Project URL from Settings -> API, which looks like ` +
+        `https://yourproject.supabase.co -- not the dashboard page you see ` +
+        `in your browser.`,
+    );
+  }
+
   // The service role key bypasses row level security, which is what we want:
   // every request already passed the family password check before reaching
   // here, and the browser never talks to Supabase directly.
-  return createClient(env.supabaseUrl, env.supabaseServiceKey, {
+  return createClient(url, env.supabaseServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
