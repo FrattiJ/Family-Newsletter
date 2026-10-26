@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { blastArticle } from "@/lib/email";
+import { isOwner } from "@/lib/config";
 import { requireFamilyMember } from "@/lib/session";
 import { store } from "@/lib/store";
 import { PHOTO_EXTENSIONS } from "@/lib/store/types";
@@ -92,4 +93,43 @@ export async function publishArticle(
 
   // redirect() works by throwing, so it has to sit outside the try block.
   redirect(destination);
+}
+
+export type RemoveState = { error: string } | null;
+
+/**
+ * Takes a story down. Only the person whose name is on it can do this, or
+ * somebody marked as an owner in family.json. The row is kept, so a story
+ * removed by accident can be restored.
+ */
+export async function removeArticle(
+  _previous: RemoveState,
+  formData: FormData,
+): Promise<RemoveState> {
+  try {
+    const session = await requireFamilyMember();
+    const id = String(formData.get("id") ?? "");
+
+    const article = await store().getArticle(id);
+    if (!article) {
+      return { error: "That story has already been removed." };
+    }
+
+    if (article.authorName !== session.name && !isOwner(session.name)) {
+      return {
+        error: `Only ${article.authorName} can remove this story. Ask them, or ask whoever looks after the website.`,
+      };
+    }
+
+    await store().deleteArticle(id);
+    revalidatePath("/newsletter");
+    return null;
+  } catch (cause) {
+    return {
+      error:
+        cause instanceof Error
+          ? cause.message
+          : "Something went wrong removing the story. Please try again.",
+    };
+  }
 }

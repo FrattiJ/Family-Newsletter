@@ -24,7 +24,20 @@ async function readArticles(): Promise<Article[]> {
 export const localStore: Store = {
   async listArticles() {
     const articles = await readArticles();
-    return articles.sort(sortNewestFirst);
+    return articles.filter((a) => !a.deletedAt).sort(sortNewestFirst);
+  },
+
+  async getArticle(id: string) {
+    const articles = await readArticles();
+    return articles.find((a) => a.id === id && !a.deletedAt) ?? null;
+  },
+
+  async deleteArticle(id: string) {
+    const articles = await readArticles();
+    const article = articles.find((a) => a.id === id);
+    if (!article) return;
+    article.deletedAt = new Date().toISOString();
+    await writeFile(ARTICLES_FILE, JSON.stringify(articles, null, 2), "utf8");
   },
 
   async createArticle(input: NewArticle) {

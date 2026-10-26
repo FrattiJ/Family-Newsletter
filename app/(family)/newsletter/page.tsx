@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Masthead } from "@/components/Masthead";
+import { RemoveStory } from "@/components/RemoveStory";
+import { isOwner } from "@/lib/config";
+import { getSession } from "@/lib/session";
 import { formatLongDate, formatMonthHeading, monthKey } from "@/lib/dates";
 import { store, type Article } from "@/lib/store";
 
@@ -8,6 +11,12 @@ export const dynamic = "force-dynamic";
 export default async function NewsletterPage() {
   const articles = await store().listArticles();
   const [lead, ...rest] = articles;
+
+  // Only the person a story is signed by can take it down, plus any owner.
+  const session = await getSession();
+  const viewer = session?.name ?? "";
+  const canRemove = (article: Article) =>
+    Boolean(viewer) && (article.authorName === viewer || isOwner(viewer));
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -25,8 +34,10 @@ export default async function NewsletterPage() {
         <EmptyState />
       ) : (
         <>
-          <LeadStory article={lead} />
-          {rest.length > 0 ? <Archive articles={rest} /> : null}
+          <LeadStory article={lead} canRemove={canRemove(lead)} />
+          {rest.length > 0 ? (
+            <Archive articles={rest} canRemove={canRemove} />
+          ) : null}
         </>
       )}
     </div>
@@ -90,7 +101,13 @@ function Paragraphs({ body }: { body: string }) {
   );
 }
 
-function LeadStory({ article }: { article: Article }) {
+function LeadStory({
+  article,
+  canRemove,
+}: {
+  article: Article;
+  canRemove: boolean;
+}) {
   return (
     <article>
       <div className="smallcaps text-accent mb-3">Latest Story</div>
@@ -112,11 +129,19 @@ function LeadStory({ article }: { article: Article }) {
       <div className="article-body article-body--lead text-[1.05rem] lg:columns-2 lg:gap-10">
         <Paragraphs body={article.body} />
       </div>
+
+      {canRemove ? <RemoveStory id={article.id} title={article.title} /> : null}
     </article>
   );
 }
 
-function Archive({ articles }: { articles: Article[] }) {
+function Archive({
+  articles,
+  canRemove,
+}: {
+  articles: Article[];
+  canRemove: (article: Article) => boolean;
+}) {
   // Articles arrive newest first, so walking them in order keeps months in order.
   const months: { key: string; label: string; articles: Article[] }[] = [];
   for (const article of articles) {
@@ -163,6 +188,10 @@ function Archive({ articles }: { articles: Article[] }) {
                 <div className="article-body text-[0.98rem]">
                   <Paragraphs body={article.body} />
                 </div>
+
+                {canRemove(article) ? (
+                  <RemoveStory id={article.id} title={article.title} />
+                ) : null}
               </article>
             ))}
           </div>

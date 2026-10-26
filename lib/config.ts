@@ -4,6 +4,8 @@ export type FamilyMember = {
   name: string;
   email: string;
   receivesEmail: boolean;
+  /** An owner can take down anybody's story, not only their own. */
+  owner: boolean;
 };
 
 export type FamilyConfig = {
@@ -26,6 +28,7 @@ function buildConfig(): FamilyConfig {
       name: m.name.trim(),
       email: (m.email ?? "").trim().toLowerCase(),
       receivesEmail: m.receivesEmail !== false && (m.email ?? "").includes("@"),
+      owner: m.owner === true,
     }));
 
   return {
@@ -47,6 +50,10 @@ export function familyNames(): string[] {
 
 export function isFamilyName(name: string): boolean {
   return config.members.some((m) => m.name === name);
+}
+
+export function isOwner(name: string): boolean {
+  return config.members.some((m) => m.name === name && m.owner);
 }
 
 export function mailingList(): FamilyMember[] {

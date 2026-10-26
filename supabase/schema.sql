@@ -8,10 +8,16 @@ create table if not exists public.articles (
   author_name text not null,
   event_date  date not null,
   photo_id    uuid,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  -- Set when a story is taken down. The row is kept, so a story removed by
+  -- mistake can be put back by clearing this column.
+  deleted_at  timestamptz
 );
 
--- The newsletter is always read newest-first.
+-- For databases created before stories could be removed.
+alter table public.articles add column if not exists deleted_at timestamptz;
+
+-- The newsletter is always read newest-first, and never shows removed stories.
 create index if not exists articles_by_date
   on public.articles (event_date desc, created_at desc);
 

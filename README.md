@@ -41,7 +41,8 @@ Open `family.json`. It looks like this:
   "newsletterName": "For all my Peeps",
   "tagline": "News, notes and happenings from all of us",
   "members": [
-    { "name": "Jacob", "email": "you@example.com", "receivesEmail": true }
+    { "name": "Jacob", "email": "you@example.com", "receivesEmail": true,
+      "owner": true }
   ]
 }
 ```
@@ -50,9 +51,32 @@ Open `family.json`. It looks like this:
   printed under the headline when they write something.
 - `email` is where their copy of the newsletter is sent.
 - `receivesEmail: false` lets somebody read and post without getting emails.
+- `owner: true` lets that person remove anybody's story, not only their own.
+  Leave it off for everybody else.
 
 Add a line per relative. After changing this file you need to deploy again
 (see below) for the change to show up on the live site.
+
+---
+
+## Taking a story down
+
+Under each story there is a small **Remove this story** link, but only on
+stories signed with your own name — so nobody can delete someone else's news
+by mistake. Anyone marked `owner` in `family.json` sees it on every story and
+can tidy up for a relative who cannot manage it themselves.
+
+It asks once before doing anything, so a stray tap on a phone is harmless.
+The story disappears from the newsletter straight away. An email that has
+already gone out cannot be unsent.
+
+Nothing is truly erased: the story is marked as removed and hidden, and the
+row stays in the database. If somebody deletes the wrong thing, it can be put
+back by clearing that mark in the Supabase table editor:
+
+```sql
+update public.articles set deleted_at = null where title = 'The headline';
+```
 
 ---
 

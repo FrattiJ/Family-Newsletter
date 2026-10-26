@@ -7,9 +7,15 @@ export type Article = {
   eventDate: string;
   photoId: string | null;
   createdAt: string;
+  /**
+   * Set once a story has been taken down. It then disappears from the
+   * newsletter, but the row is kept so a story removed by mistake can be
+   * put back.
+   */
+  deletedAt?: string | null;
 };
 
-export type NewArticle = Omit<Article, "id" | "createdAt">;
+export type NewArticle = Omit<Article, "id" | "createdAt" | "deletedAt">;
 
 export type StoredPhoto = {
   bytes: Buffer;
@@ -18,7 +24,10 @@ export type StoredPhoto = {
 
 export type Store = {
   listArticles(): Promise<Article[]>;
+  getArticle(id: string): Promise<Article | null>;
   createArticle(input: NewArticle): Promise<Article>;
+  /** Marks a story as taken down. The row is kept so it can be restored. */
+  deleteArticle(id: string): Promise<void>;
   putPhoto(id: string, bytes: Buffer, contentType: string): Promise<void>;
   getPhoto(id: string): Promise<StoredPhoto | null>;
 };

@@ -13,6 +13,7 @@ type ArticleRow = {
   event_date: string;
   photo_id: string | null;
   created_at: string;
+  deleted_at: string | null;
 };
 
 function client() {
@@ -54,11 +55,33 @@ export const supabaseStore: Store = {
     const { data, error } = await client()
       .from("articles")
       .select("*")
+      .is("deleted_at", null)
       .order("event_date", { ascending: false })
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(`Could not load the newsletter: ${error.message}`);
     return (data as ArticleRow[]).map(toArticle);
+  },
+
+  async getArticle(id: string) {
+    const { data, error } = await client()
+      .from("articles")
+      .select("*")
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (error) throw new Error(`Could not find that story: ${error.message}`);
+    return data ? toArticle(data as ArticleRow) : null;
+  },
+
+  async deleteArticle(id: string) {
+    const { error } = await client()
+      .from("articles")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+
+    if (error) throw new Error(`Could not remove the story: ${error.message}`);
   },
 
   async createArticle(input: NewArticle) {
