@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Local newsletter data (stories, photos, saved emails)
+.data/
