@@ -1,0 +1,16 @@
+{
+  "newsletterName": "For all my Peeps",
+  "tagline": "News, notes and happenings from all of us",
+  "members": [
+    {
+      "name": "Jacob",
+      "email": "frattihome@gmail.com",
+      "receivesEmail": true
+    },
+    {
+      "name": "Example Relative",
+      "email": "someone@example.com",
+      "receivesEmail": false
+    }
+  ]
+}

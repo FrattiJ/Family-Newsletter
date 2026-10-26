@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-display: var(--font-playfair);
+  --font-body: var(--font-source-serif);
+}
+
+@theme {
+  /* A newsprint palette: warm paper, soft ink, one editorial red. */
+  --color-newsprint: #efece4;
+  --color-paper: #fbf9f4;
+  --color-ink: #1f1d1a;
+  --color-soft: #4a4640;
+  --color-muted: #8a8273;
+  --color-rule: #d8d2c4;
+  --color-accent: #9c2b1b;
+}
+
+:root {
+  /* A newspaper is a light object; keep it that way in dark mode too. */
+  color-scheme: light;
+}
+
+html {
+  /* Larger than typical, because not everyone reading this has young eyes. */
+  font-size: 18px;
+  background: var(--color-newsprint);
+}
+
+body {
+  background: var(--color-newsprint);
+  color: var(--color-ink);
+  font-family: var(--font-body), Georgia, "Times New Roman", serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Section labels and bylines: the small all-caps type of a newspaper. */
+.smallcaps {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* The double rule under a masthead. */
+.rule-double {
+  border-top: 1px solid var(--color-ink);
+  border-bottom: 3px double var(--color-ink);
+}
+
+.article-body p {
+  margin-bottom: 1.1rem;
+  line-height: 1.7;
+  color: var(--color-soft);
+}
+
+.article-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Oversized opening letter on the lead story, as a newspaper would set it. */
+.article-body--lead > p:first-of-type::first-letter {
+  float: left;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 3.6rem;
+  line-height: 0.82;
+  font-weight: 700;
+  color: var(--color-ink);
+  padding: 0.08em 0.1em 0 0;
+}
+
+/* Big, obvious, hard-to-miss controls. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.5rem;
+  padding: 0 1.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  border: 1px solid var(--color-ink);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.btn-primary {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.btn-secondary:hover {
+  background: var(--color-rule);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.field {
+  width: 100%;
+  background: var(--color-paper);
+  border: 1px solid var(--color-rule);
+  color: var(--color-ink);
+  padding: 0.9rem 1rem;
+  font-size: 1.1rem;
+  font-family: inherit;
+}
+
+.field:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-color: var(--color-accent);
+}
+
+.field-label {
+  display: block;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}
+
+.field-help {
+  display: block;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+  margin-bottom: 0.55rem;
+}
