@@ -6,11 +6,6 @@
       "name": "Jacob",
       "email": "frattihome@gmail.com",
       "receivesEmail": true
-    },
-    {
-      "name": "Example Relative",
-      "email": "someone@example.com",
-      "receivesEmail": false
     }
   ]
 }
