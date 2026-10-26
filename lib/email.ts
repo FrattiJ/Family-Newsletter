@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { Resend } from "resend";
-import { env, familyConfig, mailingList } from "./config";
+import nodemailer from "nodemailer";
+import { emailConfigured, env, familyConfig, mailingList } from "./config";
 import { formatLongDate } from "./dates";
 import { photoToken } from "./session";
 import type { Article } from "./store";
@@ -117,12 +117,6 @@ function emailText(article: Article): string {
   ].join("\n");
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
-  return out;
-}
-
 /**
  * Emails one story to everyone on the family list. Each relative gets their
  * own message, so nobody sees anybody else's address.
@@ -137,8 +131,8 @@ export async function blastArticle(article: Article): Promise<BlastResult> {
   const html = emailHtml(article);
   const text = emailText(article);
 
-  if (!env.resendApiKey) {
-    // No email service configured yet: write the message to .data/outbox so
+  if (!emailConfigured()) {
+    // No mail account configured yet: write the message to .data/outbox so
     // it can be opened in a browser and checked.
     const dir = path.join(process.cwd(), ".data", "outbox");
     await mkdir(dir, { recursive: true });
@@ -152,26 +146,42 @@ export async function blastArticle(article: Article): Promise<BlastResult> {
     return { sent: recipients.length, savedToOutbox: true, errors: [] };
   }
 
-  const resend = new Resend(env.resendApiKey);
+  const transport = nodemailer.createTransport({
+    host: env.smtpHost,
+    port: env.smtpPort,
+    secure: env.smtpPort === 465,
+    auth: { user: env.smtpUser, pass: env.smtpPassword },
+    // Without these, an unreachable mail server leaves the relative staring
+    // at a spinner forever. Better to fail and tell them the story saved.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
+
   const errors: string[] = [];
   let sent = 0;
 
-  for (const group of chunk(recipients, 100)) {
-    const payload = group.map((member) => ({
-      from: env.emailFrom,
-      to: [member.email],
-      subject,
-      html,
-      text,
-    }));
-
-    try {
-      const { error } = await resend.batch.send(payload);
-      if (error) errors.push(error.message);
-      else sent += group.length;
-    } catch (cause) {
-      errors.push(cause instanceof Error ? cause.message : String(cause));
+  try {
+    // One message per relative, so nobody sees anyone else's address. A
+    // family list is short, so sending them in turn is simplest and stays
+    // well inside any provider's rate limit.
+    for (const member of recipients) {
+      try {
+        await transport.sendMail({
+          from: env.emailFrom,
+          to: member.email,
+          subject,
+          html,
+          text,
+        });
+        sent += 1;
+      } catch (cause) {
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        errors.push(`${member.name} (${member.email}): ${reason}`);
+      }
     }
+  } finally {
+    transport.close();
   }
 
   return { sent, savedToOutbox: false, errors };

@@ -74,11 +74,27 @@ export const env = {
   get siteUrl() {
     return (process.env.SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
   },
-  get resendApiKey() {
-    return process.env.RESEND_API_KEY?.trim() || "";
+  /**
+   * Any SMTP service works here. Gmail is the default because it costs
+   * nothing and needs no domain of your own.
+   */
+  get smtpHost() {
+    return process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
+  },
+  get smtpPort() {
+    return Number(process.env.SMTP_PORT?.trim() || "465");
+  },
+  get smtpUser() {
+    return process.env.SMTP_USER?.trim() || "";
+  },
+  get smtpPassword() {
+    return process.env.SMTP_PASSWORD?.trim() || "";
   },
   get emailFrom() {
-    return process.env.EMAIL_FROM?.trim() || "Family News <onboarding@resend.dev>";
+    const configured = process.env.EMAIL_FROM?.trim();
+    if (configured) return configured;
+    // Fall back to the sending account, labelled with the paper's name.
+    return `${config.newsletterName} <${process.env.SMTP_USER?.trim() ?? ""}>`;
   },
   get supabaseUrl() {
     return process.env.SUPABASE_URL?.trim() || "";
@@ -87,6 +103,11 @@ export const env = {
     return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   },
 };
+
+/** True once a mail account is configured; until then emails go to .data/outbox. */
+export function emailConfigured(): boolean {
+  return Boolean(env.smtpUser && env.smtpPassword);
+}
 
 /** True when Supabase credentials are present, so we store things in the cloud. */
 export function usingSupabase(): boolean {
