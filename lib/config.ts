@@ -56,8 +56,17 @@ export function isOwner(name: string): boolean {
   return config.members.some((m) => m.name === name && m.owner);
 }
 
+/**
+ * Who a story gets emailed to. Couples often share one inbox, so each
+ * address appears at most once however many people are listed under it.
+ */
 export function mailingList(): FamilyMember[] {
-  return config.members.filter((m) => m.receivesEmail && m.email);
+  const seen = new Set<string>();
+  return config.members.filter((m) => {
+    if (!m.receivesEmail || !m.email || seen.has(m.email)) return false;
+    seen.add(m.email);
+    return true;
+  });
 }
 
 function required(key: string): string {
