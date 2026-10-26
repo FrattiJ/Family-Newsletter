@@ -16,8 +16,9 @@ listed in `family.json` ever receive an email.
 ## Trying it on your own computer
 
 You can run the whole thing locally with no accounts and nothing to sign up
-for. Stories are kept in a `.data` folder, and emails are written to
-`.data/outbox` as files instead of being sent to anyone.
+for. Stories are kept in a `.data` folder, and as long as `SMTP_USER` is
+blank, emails are written to `.data/outbox` as files instead of being sent
+to anyone.
 
 ```bash
 npm install && npm run dev
@@ -57,7 +58,16 @@ Add a line per relative. After changing this file you need to deploy again
 
 ## Putting it online
 
-Three accounts, all free at this size. Do them in order.
+Everything below is free. No domain name is needed, and nothing asks for a
+card. Do these in order.
+
+> **On free addresses.** A Vercel address like `peeps.vercel.app` is a fine
+> home for the site itself. It cannot be used to *send* email, though,
+> because that needs DNS records on a domain you control, and `vercel.app`
+> belongs to Vercel. Sending through Gmail in step 2 sidesteps this
+> entirely. GitHub Pages is a different matter: it only serves fixed files
+> and cannot run the login or the publishing, so it will not work for this
+> site at all.
 
 ### 1. Supabase — where stories and photos live
 
@@ -73,14 +83,30 @@ A hosted site cannot keep files on disk, so stories move to Supabase.
 > The `service_role` key is a master key. It only ever goes in the hosting
 > settings below — never in `family.json` and never in a message to anyone.
 
-### 2. Resend — sending the emails
+### 2. Gmail — sending the emails, free
 
-1. Make a free account at <https://resend.com> (3,000 emails a month free).
-2. **API Keys → Create API Key**, and copy it.
-3. To start, you can send from `onboarding@resend.dev`, which works right
-   away but can only email *your own* address. To email the whole family you
-   need to add a domain under **Domains** and use an address at it, such as
-   `news@ourfamily.com`.
+The site sends through an ordinary email account over SMTP. Gmail is the
+easiest option: it costs nothing, needs no domain of your own, and the
+newsletter arrives from an address your family already recognises, which
+helps it stay out of spam folders.
+
+You need an **app password**, not your normal Gmail password:
+
+1. Turn on 2-Step Verification at
+   <https://myaccount.google.com/security> if it isn't on already.
+   Google only offers app passwords once it is.
+2. Go to <https://myaccount.google.com/apppasswords>, name it
+   something like "Family newsletter", and create it.
+3. Copy the 16-character code it shows you. That is your `SMTP_PASSWORD`.
+   Treat it like a password, because it is one.
+
+Free Gmail allows around 500 messages a day, which is far more than a
+family newsletter will ever need.
+
+> **Any SMTP service works here.** If you would rather not use Gmail, free
+> alternatives such as Brevo or Mailjet let you send from a single verified
+> address without owning a domain. Point `SMTP_HOST`, `SMTP_PORT`,
+> `SMTP_USER` and `SMTP_PASSWORD` at them instead; nothing else changes.
 
 ### 3. Vercel — running the site
 
@@ -93,8 +119,11 @@ A hosted site cannot keep files on disk, so stories move to Supabase.
    | `FAMILY_PASSWORD` | the password you'll give the family |
    | `SESSION_SECRET` | a long random string (see below) |
    | `SITE_URL` | `https://your-site.vercel.app` |
-   | `RESEND_API_KEY` | from step 2 |
-   | `EMAIL_FROM` | `Family News <news@yourdomain.com>` |
+   | `SMTP_HOST` | `smtp.gmail.com` |
+   | `SMTP_PORT` | `465` |
+   | `SMTP_USER` | your full Gmail address |
+   | `SMTP_PASSWORD` | the app password from step 2 |
+   | `EMAIL_FROM` | `For all my Peeps <you@gmail.com>` |
    | `SUPABASE_URL` | from step 1 |
    | `SUPABASE_SERVICE_ROLE_KEY` | from step 1 |
 
@@ -137,7 +166,7 @@ and redeploy — everyone will simply be asked for the new one.
 | `app/(family)/newsletter` | The newspaper page |
 | `app/(family)/write` | The story composer |
 | `app/actions` | Login and publishing, which run on the server |
-| `lib/email.ts` | The email design and sending |
+| `lib/email.ts` | The email design and sending (any SMTP service) |
 | `lib/store/` | Where stories go: `.data` locally, Supabase when deployed |
 | `proxy.ts` | The gate that keeps everything behind the password |
 | `supabase/schema.sql` | Run once when setting up Supabase |
