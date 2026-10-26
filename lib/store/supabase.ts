@@ -11,7 +11,7 @@ type ArticleRow = {
   body: string;
   author_name: string;
   event_date: string;
-  photo_id: string | null;
+  photo_ids: string[] | null;
   created_at: string;
   deleted_at: string | null;
 };
@@ -45,7 +45,7 @@ function toArticle(row: ArticleRow): Article {
     body: row.body,
     authorName: row.author_name,
     eventDate: row.event_date,
-    photoId: row.photo_id,
+    photoIds: row.photo_ids ?? [],
     createdAt: row.created_at,
   };
 }
@@ -92,7 +92,7 @@ export const supabaseStore: Store = {
         body: input.body,
         author_name: input.authorName,
         event_date: input.eventDate,
-        photo_id: input.photoId,
+        photo_ids: input.photoIds,
       })
       .select("*")
       .single();

@@ -7,7 +7,7 @@ import { blastArticle } from "@/lib/email";
 import { isOwner } from "@/lib/config";
 import { requireFamilyMember } from "@/lib/session";
 import { store } from "@/lib/store";
-import { PHOTO_EXTENSIONS } from "@/lib/store/types";
+import { MAX_PHOTOS, PHOTO_EXTENSIONS } from "@/lib/store/types";
 
 export type PublishState = { error: string } | null;
 
@@ -31,7 +31,7 @@ export async function publishArticle(
       .trim();
     const eventDate = String(formData.get("eventDate") ?? "").trim();
     const shouldEmail = formData.get("sendEmail") === "on";
-    const photo = formData.get("photo");
+    const photos = formData.getAll("photos");
 
     if (!title) return { error: "Please give your story a headline." };
     if (title.length > MAX_TITLE) {
@@ -45,9 +45,16 @@ export async function publishArticle(
       return { error: "Please pick a date for the story." };
     }
 
-    let photoId: string | null = null;
+    const chosen = photos.filter(
+      (file): file is File => file instanceof File && file.size > 0,
+    );
 
-    if (photo instanceof File && photo.size > 0) {
+    if (chosen.length > MAX_PHOTOS) {
+      return { error: `A story can hold up to ${MAX_PHOTOS} photos.` };
+    }
+
+    const photoIds: string[] = [];
+    for (const photo of chosen) {
       if (!PHOTO_EXTENSIONS[photo.type]) {
         return { error: "That file is not a photo. Please choose a JPG or PNG." };
       }
@@ -55,9 +62,10 @@ export async function publishArticle(
         return { error: "That photo is too large. Please pick a smaller one." };
       }
 
-      photoId = randomUUID();
+      const photoId = randomUUID();
       const bytes = Buffer.from(await photo.arrayBuffer());
       await store().putPhoto(photoId, bytes, photo.type);
+      photoIds.push(photoId);
     }
 
     const article = await store().createArticle({
@@ -65,7 +73,7 @@ export async function publishArticle(
       body,
       authorName: session.name,
       eventDate,
-      photoId,
+      photoIds,
     });
 
     revalidatePath("/newsletter");

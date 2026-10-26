@@ -29,14 +29,19 @@ function paragraphsOf(body: string): string[] {
     .filter(Boolean);
 }
 
-export function photoUrlFor(article: Article): string | null {
-  if (!article.photoId) return null;
-  return `${env.siteUrl}/api/photo/${article.photoId}?t=${photoToken(article.photoId)}`;
+/**
+ * Each photo carries its own token, because an email client cannot send the
+ * login cookie the website uses.
+ */
+export function photoUrlsFor(article: Article): string[] {
+  return (article.photoIds ?? []).map(
+    (id) => `${env.siteUrl}/api/photo/${id}?t=${photoToken(id)}`,
+  );
 }
 
 function emailHtml(article: Article): string {
   const { newsletterName } = familyConfig();
-  const photo = photoUrlFor(article);
+  const photos = photoUrlsFor(article);
   const body = paragraphsOf(article.body)
     .map(
       (p) =>
@@ -70,11 +75,16 @@ function emailHtml(article: Article): string {
         </td></tr>
 
         ${
-          photo
-            ? `<tr><td style="padding:20px 32px 0;">
+          // Stacked rather than side by side: every email client handles a
+          // plain column of images, and they stay legible on a phone.
+          photos
+            .map(
+              (photo) =>
+                `<tr><td style="padding:20px 32px 0;">
                  <img src="${photo}" alt="" width="536" style="display:block;width:100%;max-width:536px;height:auto;border:1px solid #d8d2c4;" />
-               </td></tr>`
-            : ""
+               </td></tr>`,
+            )
+            .join("")
         }
 
         <tr><td style="padding:22px 32px 8px;font-family:Georgia,'Times New Roman',serif;">

@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { publishArticle, type PublishState } from "@/app/actions/articles";
+import { MAX_PHOTOS } from "@/lib/store/types";
 
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_EDGE = 1600;
@@ -45,69 +46,103 @@ export function ComposerForm({
     null,
   );
 
-  // The file and its preview URL move together, so one piece of state holds
-  // both and the old URL is released the moment it is replaced.
-  const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
+  // Each photo travels with its own preview URL, so a URL can be released
+  // the moment that photo is removed.
+  const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
-  const previewUrl = useRef<string | null>(null);
-
-  function showPhoto(file: File | null) {
-    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
-    previewUrl.current = file ? URL.createObjectURL(file) : null;
-    setPhoto(file && previewUrl.current ? { file, url: previewUrl.current } : null);
-  }
+  const previewUrls = useRef<string[]>([]);
 
   useEffect(() => {
-    // Release the last preview when leaving the page.
+    // Release any previews still open when leaving the page.
     return () => {
-      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+      for (const url of previewUrls.current) URL.revokeObjectURL(url);
     };
   }, []);
 
-  async function onPickPhoto(event: React.ChangeEvent<HTMLInputElement>) {
-    const picked = event.target.files?.[0];
+  async function onPickPhotos(event: React.ChangeEvent<HTMLInputElement>) {
+    const picked = [...(event.target.files ?? [])];
+    // Let the same photo be picked again after being removed.
+    if (fileInput.current) fileInput.current.value = "";
     setPhotoError(null);
-    if (!picked) {
-      showPhoto(null);
+    if (picked.length === 0) return;
+
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) {
+      setPhotoError(`You can add up to ${MAX_PHOTOS} photos to a story.`);
       return;
     }
 
+    const tooMany = picked.length > room;
     setWorking(true);
     try {
-      showPhoto(await shrinkPhoto(picked));
-    } catch {
-      // Some phones hand over formats the browser cannot open (HEIC, mainly).
-      if (ALLOWED.includes(picked.type)) showPhoto(picked);
-      else
+      const added: { file: File; url: string }[] = [];
+      let unreadable = 0;
+
+      for (const file of picked.slice(0, room)) {
+        let usable: File | null = null;
+        try {
+          usable = await shrinkPhoto(file);
+        } catch {
+          // Some phones save in formats the browser cannot open (HEIC).
+          usable = ALLOWED.includes(file.type) ? file : null;
+        }
+        if (!usable) {
+          unreadable += 1;
+          continue;
+        }
+        const url = URL.createObjectURL(usable);
+        previewUrls.current.push(url);
+        added.push({ file: usable, url });
+      }
+
+      if (added.length > 0) setPhotos((current) => [...current, ...added]);
+
+      if (unreadable > 0) {
         setPhotoError(
-          "This phone saved the photo in a format the website cannot read. " +
-            "Try taking a screenshot of it and choosing that instead.",
+          unreadable === picked.length
+            ? "This phone saved the photo in a format the website cannot read. " +
+                "Try taking a screenshot of it and choosing that instead."
+            : `${unreadable} of those photos could not be read, so they were skipped.`,
         );
+      } else if (tooMany) {
+        setPhotoError(
+          `Only ${MAX_PHOTOS} photos fit on a story, so the first ${room} ${
+            room === 1 ? "was" : "were"
+          } added.`,
+        );
+      }
     } finally {
       setWorking(false);
     }
   }
 
-  function clearPhoto() {
-    showPhoto(null);
+  function removePhoto(index: number) {
     setPhotoError(null);
-    if (fileInput.current) fileInput.current.value = "";
+    setPhotos((current) => {
+      const [gone] = current.slice(index, index + 1);
+      if (gone) {
+        URL.revokeObjectURL(gone.url);
+        previewUrls.current = previewUrls.current.filter((u) => u !== gone.url);
+      }
+      return current.filter((_, i) => i !== index);
+    });
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    // Send the shrunken photo rather than whatever the file input holds.
-    if (photo) data.set("photo", photo.file);
-    else data.delete("photo");
+    // Send the shrunken photos rather than whatever the file input holds.
+    data.delete("photos");
+    for (const photo of photos) data.append("photos", photo.file);
     // Must run inside a transition, or the pending state never turns on and
     // the button stays live while the story uploads.
     startTransition(() => formAction(data));
   }
 
   const busy = pending || working;
+  const room = MAX_PHOTOS - photos.length;
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
@@ -148,40 +183,58 @@ export function ComposerForm({
       </div>
 
       <div>
-        <span className="field-label">Add a photo</span>
+        <span className="field-label">Add photos</span>
         <span className="field-help">
-          Optional, and one is plenty. Big photos are fine — we shrink them for
+          Optional, up to {MAX_PHOTOS}. Big photos are fine — we shrink them for
           you.
         </span>
 
-        {photo ? (
-          <div className="bg-paper border border-rule p-3">
-            {/* A local blob preview; next/image cannot optimise one. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.url}
-              alt="The photo you chose"
-              className="w-full max-h-80 object-contain bg-newsprint"
-            />
-            <button
-              type="button"
-              onClick={clearPhoto}
-              className="mt-3 text-sm underline text-muted hover:text-accent"
-            >
-              Remove this photo
-            </button>
+        {photos.length > 0 ? (
+          <div className="bg-paper border border-rule p-3 mb-3">
+            <div className="grid grid-cols-3 gap-3">
+              {photos.map((photo, index) => (
+                <figure key={photo.url}>
+                  {/* A local blob preview; next/image cannot optimise one. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photo.url}
+                    alt={`Photo ${index + 1} of ${photos.length}`}
+                    className="w-full h-28 sm:h-36 object-cover bg-newsprint border border-rule"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(index)}
+                    className="mt-2 text-sm underline text-muted hover:text-accent"
+                  >
+                    Remove
+                  </button>
+                </figure>
+              ))}
+            </div>
           </div>
-        ) : (
+        ) : null}
+
+        {room > 0 ? (
           <label className="btn btn-secondary bg-paper w-full cursor-pointer">
-            {working ? "Getting the photo ready…" : "Choose a photo"}
+            {working
+              ? "Getting the photos ready…"
+              : photos.length === 0
+                ? "Choose photos"
+                : `Add another photo (${room} left)`}
             <input
               ref={fileInput}
               type="file"
+              multiple
               accept="image/jpeg,image/png,image/webp,image/gif"
               className="sr-only"
-              onChange={onPickPhoto}
+              onChange={onPickPhotos}
             />
           </label>
+        ) : (
+          <p className="text-muted text-sm">
+            That&rsquo;s {MAX_PHOTOS} photos — the most a story can hold. Remove
+            one if you&rsquo;d rather use a different picture.
+          </p>
         )}
 
         {photoError ? (

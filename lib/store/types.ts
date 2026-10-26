@@ -5,7 +5,8 @@ export type Article = {
   authorName: string;
   /** The day the news happened, as YYYY-MM-DD. Drives the newspaper ordering. */
   eventDate: string;
-  photoId: string | null;
+  /** Up to MAX_PHOTOS photo ids, in the order they were chosen. */
+  photoIds: string[];
   createdAt: string;
   /**
    * Set once a story has been taken down. It then disappears from the
@@ -31,6 +32,9 @@ export type Store = {
   putPhoto(id: string, bytes: Buffer, contentType: string): Promise<void>;
   getPhoto(id: string): Promise<StoredPhoto | null>;
 };
+
+/** Photos are cheap to store, but a story stays readable with only a few. */
+export const MAX_PHOTOS = 3;
 
 export const PHOTO_EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",

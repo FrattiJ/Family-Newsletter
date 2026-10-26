@@ -71,19 +71,38 @@ function Byline({ article }: { article: Article }) {
   );
 }
 
-function Photo({ article, priority }: { article: Article; priority?: boolean }) {
-  if (!article.photoId) return null;
+function Photos({ article, priority }: { article: Article; priority?: boolean }) {
+  const photoIds = article.photoIds ?? [];
+  if (photoIds.length === 0) return null;
+
+  // One photo runs full width; two or three sit side by side, the way a
+  // newspaper would set a row of pictures under a headline.
+  const columns = photoIds.length === 1 ? "" : "grid gap-3 grid-cols-2";
+  const spanFirst =
+    photoIds.length === 3 ? "col-span-2" : photoIds.length === 1 ? "" : "";
+
   return (
-    // A plain img: these photos are already shrunk in the browser before
-    // upload, and they are served from a login-protected route that
-    // next/image would not be able to optimise anyway.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/api/photo/${article.photoId}`}
-      alt={`Photo for “${article.title}”`}
-      loading={priority ? "eager" : "lazy"}
-      className="w-full bg-rule border border-rule object-cover"
-    />
+    <div className={columns}>
+      {photoIds.map((photoId, index) => (
+        // A plain img: these photos are already shrunk in the browser before
+        // upload, and they are served from a login-protected route that
+        // next/image would not be able to optimise anyway.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={photoId}
+          src={`/api/photo/${photoId}`}
+          alt={
+            photoIds.length === 1
+              ? `Photo for “${article.title}”`
+              : `Photo ${index + 1} of ${photoIds.length} for “${article.title}”`
+          }
+          loading={priority && index === 0 ? "eager" : "lazy"}
+          className={`w-full bg-rule border border-rule object-cover ${
+            photoIds.length === 1 ? "" : "h-44 sm:h-56"
+          } ${index === 0 ? spanFirst : ""}`}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -120,9 +139,9 @@ function LeadStory({
         <Byline article={article} />
       </div>
 
-      {article.photoId ? (
+      {article.photoIds.length > 0 ? (
         <figure className="mb-7">
-          <Photo article={article} priority />
+          <Photos article={article} priority />
         </figure>
       ) : null}
 
@@ -171,9 +190,9 @@ function Archive({
           <div className="grid gap-x-10 gap-y-12 md:grid-cols-2">
             {month.articles.map((article) => (
               <article key={article.id} className="flex flex-col">
-                {article.photoId ? (
+                {article.photoIds.length > 0 ? (
                   <figure className="mb-4">
-                    <Photo article={article} />
+                    <Photos article={article} />
                   </figure>
                 ) : null}
 
