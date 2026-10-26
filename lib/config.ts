@@ -97,10 +97,22 @@ export const env = {
     return `${config.newsletterName} <${process.env.SMTP_USER?.trim() ?? ""}>`;
   },
   get supabaseUrl() {
-    return process.env.SUPABASE_URL?.trim() || "";
+    // Vercel's Supabase integration sets NEXT_PUBLIC_SUPABASE_URL. Accept
+    // either name so the integration works without copying values by hand.
+    return (
+      process.env.SUPABASE_URL?.trim() ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+      ""
+    );
   },
   get supabaseServiceKey() {
-    return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+    // SUPABASE_SECRET_KEY is what that integration calls the key which
+    // bypasses row level security; service_role is the older name for it.
+    return (
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+      process.env.SUPABASE_SECRET_KEY?.trim() ||
+      ""
+    );
   },
 };
 
