@@ -9,7 +9,7 @@ Two things to do on the site, and nothing else to learn:
 - **The Newsletter** — every story, newest first, grouped by month.
 
 Only people who know the family password can get in, and only the addresses
-listed in `family.json` ever receive an email.
+on the family list ever receive an email.
 
 ---
 
@@ -25,7 +25,8 @@ npm install && npm run dev
 ```
 
 Then open <http://localhost:3000>. The local password is `familynews`
-(set in `.env.local`).
+(set in `.env.local`). Until you create your own `family.json` (see below),
+it uses the sample names in `family.example.json`.
 
 There are a few sample stories in there so the page isn't empty. To start
 with a clean slate, delete the `.data` folder.
@@ -34,7 +35,16 @@ with a clean slate, delete the `.data` folder.
 
 ## Adding and removing family members
 
-Open `family.json`. It looks like this:
+The family list holds everyone's email address, so it is **never committed to
+GitHub**. It lives in two places, and both should hold the same list:
+
+| Where | Used by | How to change it |
+| --- | --- | --- |
+| `FAMILY_CONFIG` in Vercel | The live site | Vercel → your project → **Settings → Environment Variables** |
+| `family.json` on your computer | Running it locally | Edit the file (it is gitignored) |
+
+The list looks like this (the same shape as
+[`family.example.json`](family.example.json)):
 
 ```json
 {
@@ -42,7 +52,8 @@ Open `family.json`. It looks like this:
   "tagline": "News, notes and happenings from all of us",
   "members": [
     { "name": "Jacob", "email": "you@example.com", "receivesEmail": true,
-      "owner": true }
+      "owner": true },
+    { "name": "Grandma", "email": "grandma@example.com", "receivesEmail": true }
   ]
 }
 ```
@@ -54,8 +65,29 @@ Open `family.json`. It looks like this:
 - `owner: true` lets that person remove anybody's story, not only their own.
   Leave it off for everybody else.
 
-Add a line per relative. After changing this file you need to deploy again
-(see below) for the change to show up on the live site.
+### When a relative wants to join
+
+1. Open your local `family.json` and add a line for them inside `members`,
+   with a comma after the line before it. Keep the name short and the way the
+   family knows them, since that's what they'll tap to sign in.
+2. In Vercel, open **Settings → Environment Variables**, find
+   `FAMILY_CONFIG`, choose **Edit**, and paste in the *whole* updated
+   `family.json`. Save.
+3. Go to **Deployments**, open the menu on the latest one, and choose
+   **Redeploy**. The new name appears on the site once it finishes, usually
+   within a minute or two.
+4. Text them the site address and the family password.
+
+To remove someone, delete their line and do steps 2 and 3 again. Their past
+stories stay on the newsletter.
+
+If the site ever fails to deploy with "No family list found" or
+"FAMILY_CONFIG is not valid JSON", the variable is missing or has a typo,
+often a missing comma or quote. Paste it into <https://jsonlint.com> to find
+the problem.
+
+To start fresh on a new computer, copy `family.example.json` to `family.json`
+and fill it in.
 
 ---
 
@@ -63,7 +95,7 @@ Add a line per relative. After changing this file you need to deploy again
 
 Under each story there is a small **Remove this story** link, but only on
 stories signed with your own name — so nobody can delete someone else's news
-by mistake. Anyone marked `owner` in `family.json` sees it on every story and
+by mistake. Anyone marked `owner` on the family list sees it on every story and
 can tidy up for a relative who cannot manage it themselves.
 
 It asks once before doing anything, so a stray tap on a phone is harmless.
@@ -105,7 +137,7 @@ A hosted site cannot keep files on disk, so stories move to Supabase.
    and the **`service_role`** key.
 
 > The `service_role` key is a master key. It only ever goes in the hosting
-> settings below — never in `family.json` and never in a message to anyone.
+> settings below, never in a file in this project and never in a message to anyone.
 
 ### 2. Gmail — sending the emails, free
 
@@ -150,6 +182,7 @@ family newsletter will ever need.
    | `EMAIL_FROM` | `For all my Peeps <you@gmail.com>` |
    | `SUPABASE_URL` | from step 1 |
    | `SUPABASE_SERVICE_ROLE_KEY` | from step 1 |
+   | `FAMILY_CONFIG` | the whole of your `family.json` (see [Adding and removing family members](#adding-and-removing-family-members)) |
 
    For `SESSION_SECRET`, run this and paste the result:
 
@@ -169,7 +202,7 @@ family newsletter will ever need.
   months so relatives aren't constantly typing it.
 - **Guessing it.** Repeated wrong attempts from the same connection are
   slowed down after ten tries.
-- **The emails.** They go only to the addresses in `family.json`. Everyone
+- **The emails.** They go only to the addresses on the family list. Everyone
   gets their own copy, so nobody sees anyone else's address.
 - **The photos.** Stored in a private bucket and served through the site, so
   a logged-out stranger with the link gets nothing. Emailed copies carry a
@@ -186,7 +219,7 @@ and redeploy — everyone will simply be asked for the new one.
 
 | Path | What it does |
 | --- | --- |
-| `family.json` | Who's in the family and what the paper is called |
+| `family.example.json` | The shape of the family list; copy it to `family.json` (gitignored) |
 | `app/(family)/newsletter` | The newspaper page |
 | `app/(family)/write` | The story composer |
 | `app/actions` | Login and publishing, which run on the server |

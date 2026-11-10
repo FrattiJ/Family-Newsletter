@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 # Local newsletter data (stories, photos, saved emails)
 .data/
+
+# The real family list (names and email addresses). See README.md.
+family.json

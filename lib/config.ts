@@ -1,4 +1,5 @@
-import familyData from "@/family.json";
+import fs from "node:fs";
+import path from "node:path";
 
 export type FamilyMember = {
   name: string;
@@ -15,13 +16,42 @@ export type FamilyConfig = {
 };
 
 /**
- * The family roster lives in family.json at the root of the project so that
- * adding a relative is a one-line edit instead of a database chore. It is
- * imported rather than read from disk so that it is always bundled with the
- * deployed site.
+ * The family roster is kept out of the repository because it holds
+ * relatives' email addresses. It is read from, in order:
+ *
+ * 1. The FAMILY_CONFIG environment variable, holding the whole JSON document.
+ *    This is how the live site gets it: set it in Vercel's settings.
+ * 2. family.json at the root of the project, for running it on your own
+ *    computer. It is gitignored, so it never gets committed.
+ * 3. family.example.json, a placeholder, so a fresh checkout still starts.
+ *    Never used on the live site: a deployment with no roster fails loudly
+ *    rather than quietly mailing nobody.
  */
+function loadFamilyData(): unknown {
+  const fromEnv = process.env.FAMILY_CONFIG?.trim();
+  if (fromEnv) {
+    try {
+      return JSON.parse(fromEnv);
+    } catch {
+      throw new Error("FAMILY_CONFIG is not valid JSON. Paste the whole family.json into it.");
+    }
+  }
+
+  const candidates = ["family.json"];
+  if (process.env.NODE_ENV !== "production") candidates.push("family.example.json");
+  for (const name of candidates) {
+    const file = path.join(process.cwd(), name);
+    if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, "utf8"));
+  }
+
+  throw new Error(
+    "No family list found. Set FAMILY_CONFIG in the hosting settings, or copy " +
+      "family.example.json to family.json. See README.md.",
+  );
+}
+
 function buildConfig(): FamilyConfig {
-  const raw = familyData as Partial<FamilyConfig>;
+  const raw = (loadFamilyData() ?? {}) as Partial<FamilyConfig>;
   const members = (raw.members ?? [])
     .filter((m) => m && typeof m.name === "string" && m.name.trim() !== "")
     .map((m) => ({

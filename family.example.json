@@ -1,0 +1,18 @@
+{
+  "newsletterName": "Our Family Newsletter",
+  "tagline": "News, notes and happenings from all of us",
+  "members": [
+    {
+      "name": "Your Name",
+      "email": "you@example.com",
+      "receivesEmail": true,
+      "owner": true
+    },
+    {
+      "name": "Grandma",
+      "email": "grandma@example.com",
+      "receivesEmail": true,
+      "owner": false
+    }
+  ]
+}
