@@ -28,6 +28,10 @@ async function tooManyAttempts(): Promise<boolean> {
     headerList.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   const now = Date.now();
+  // Forget expired records so the map can't grow without limit.
+  if (attempts.size > 1000) {
+    for (const [key, value] of attempts) if (value.resetAt < now) attempts.delete(key);
+  }
   const record = attempts.get(ip);
 
   if (!record || record.resetAt < now) {

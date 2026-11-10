@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { passwordStamp } from "./lib/passwordStamp";
 
 const SESSION_COOKIE = "fn_session";
 
@@ -37,13 +38,16 @@ async function readSession(
 ): Promise<{ name: string } | null> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const secret = process.env.SESSION_SECRET;
-  if (!token || !secret) return null;
+  const password = process.env.FAMILY_PASSWORD;
+  if (!token || !secret || !password) return null;
 
   try {
     const { payload } = await jwtVerify(
       token,
       new TextEncoder().encode(secret),
     );
+    // Signed before the family password was changed: log in again.
+    if (payload.pw !== (await passwordStamp(password, secret))) return null;
     return { name: typeof payload.name === "string" ? payload.name : "" };
   } catch {
     return null;

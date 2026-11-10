@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { env, isFamilyName } from "./config";
+import { passwordStamp } from "./passwordStamp";
 
 export const SESSION_COOKIE = "fn_session";
 
@@ -17,8 +18,12 @@ function secretKey(): Uint8Array {
   return new TextEncoder().encode(env.sessionSecret);
 }
 
+function currentStamp(): Promise<string> {
+  return passwordStamp(env.familyPassword, env.sessionSecret);
+}
+
 export async function createSessionToken(name: string): Promise<string> {
-  return new SignJWT({ name })
+  return new SignJWT({ name, pw: await currentStamp() })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE}s`)
@@ -31,6 +36,8 @@ export async function verifySessionToken(
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secretKey());
+    // Made with a password that has since been changed: no longer valid.
+    if (payload.pw !== (await currentStamp())) return null;
     const name = typeof payload.name === "string" ? payload.name : "";
     // An empty name means "logged in but hasn't told us who they are yet".
     return { name };
